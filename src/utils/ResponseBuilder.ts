@@ -39,9 +39,9 @@ class ResponseBuilder<T = any> {
   }
 
   static success<T>(
-    data: T = null as T,
+    data: T | null = null,
     message: string | null = null,
-    httpCode = 200,
+    httpCode = 200
   ): ResponseBuilder<T> {
     return this.asSuccess<T>()
       .withData(data)
@@ -51,9 +51,9 @@ class ResponseBuilder<T = any> {
 
   static successWithPagination<T>(
     query: PaginationQuery,
-    data: T = null as T,
+    data: T | null = null,
     message: string | null = null,
-    httpCode = 200,
+    httpCode = 200
   ): ResponseBuilder<T> {
     return this.asSuccess<T>()
       .withData(data)
@@ -64,9 +64,9 @@ class ResponseBuilder<T = any> {
 
   static successWithToken<T>(
     token: string,
-    data: T = null as T,
+    data: T | null = null,
     message: string | null = null,
-    httpCode = 200,
+    httpCode = 200
   ): ResponseBuilder<T> {
     return this.asSuccess<T>()
       .withAuthToken(token)
@@ -78,7 +78,7 @@ class ResponseBuilder<T = any> {
   static error<T>(
     message: string,
     httpCode = 400,
-    data: T = null as T,
+    data: T | null = null
   ): ResponseBuilder<T> {
     return this.asError<T>()
       .withData(data)
@@ -89,7 +89,7 @@ class ResponseBuilder<T = any> {
   static successMessage<T>(
     message: string,
     httpCode = 200,
-    data: T = null as T,
+    data: T | null = null
   ): ResponseBuilder<T> {
     return this.asSuccess<T>()
       .withData(data)
@@ -141,9 +141,7 @@ class ResponseBuilder<T = any> {
     return this;
   }
 
-  build(
-    res?: Response,
-  ): { httpCode: number; response: Record<string, any> } | Response {
+  build(res: Response): Response {
     const response: Record<string, any> = {
       status: this.status,
     };
@@ -154,11 +152,7 @@ class ResponseBuilder<T = any> {
     if (this.meta !== null) response.meta = this.meta;
     if (this.link !== null) response.link = this.link;
 
-    if (res) {
-      return res.status(this.httpCode).json(response);
-    }
-
-    return { httpCode: this.httpCode, response };
+    return res.status(this.httpCode).json(response);
   }
 
   static json(
@@ -166,7 +160,7 @@ class ResponseBuilder<T = any> {
     data: any = {},
     httpCode = 200,
     errors: Record<string, any> | null = null,
-    headers: JsonHeaders = {},
+    headers: JsonHeaders = {}
   ) {
     const body = {
       message,

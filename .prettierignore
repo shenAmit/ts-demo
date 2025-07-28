@@ -1,0 +1,6 @@
+*.env
+/.vscode
+.env
+.env*
+/node_modules
+endorse.json

@@ -3,10 +3,12 @@ import {
   int,
   varchar,
   timestamp,
+  datetime,
   text,
   boolean,
   mysqlEnum,
 } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 
 export const conversations = mysqlTable("conversations", {
@@ -20,9 +22,11 @@ export const conversations = mysqlTable("conversations", {
   createdBy: int("created_by")
     .references(() => users.id)
     .notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: datetime("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-  lastMessageAt: timestamp("last_message_at"),
+  lastMessageAt: datetime("last_message_at"),
 
   participantCount: int("participant_count").notNull().default(0),
   messageCount: int("message_count").notNull().default(0),

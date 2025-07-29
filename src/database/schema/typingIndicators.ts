@@ -2,9 +2,11 @@ import {
   mysqlTable,
   int,
   timestamp,
+  datetime,
   primaryKey,
   index,
 } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 import { conversations } from "./conversations";
 
@@ -19,8 +21,10 @@ export const typingIndicators = mysqlTable(
     userId: int("user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
-    startedAt: timestamp("started_at").defaultNow().notNull(),
-    expiresAt: timestamp("expires_at").notNull(), // Usually startedAt + 5 seconds
+    startedAt: datetime("started_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    expiresAt: datetime("expires_at").notNull(), // Usually startedAt + 5 seconds
   },
   (table) => ({
     pk: primaryKey({ columns: [table.conversationId, table.userId] }),

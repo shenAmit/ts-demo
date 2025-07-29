@@ -15,9 +15,8 @@ import type {
   ConversationsResponse,
   PaginationParams,
 } from "../../types/chat";
-import { db } from "../connection";
-
-export class ChatQueries {
+import { db } from "@/database/connection";
+export class ChatRepository {
   // Get user's conversations with participants and last message
   static async getUserConversations(
     userId: number,
@@ -125,32 +124,20 @@ export class ChatQueries {
       throw new Error("User is not a participant in this conversation");
     }
 
-    const whereConditions = [
-      eq(messages.conversationId, conversationId),
-      eq(messages.isDeleted, false),
-    ];
+    const whereConditions = [eq(messages.conversationId, conversationId)];
 
     if (cursor) {
       whereConditions.push(lt(messages.id, cursor));
     }
 
+    // Get messages with sender information
     const messageData = await db
       .select({
         message: messages,
         sender: users,
-        replyToMessage: sql`reply_msg`,
-        replyToSender: sql`reply_sender`,
       })
       .from(messages)
       .innerJoin(users, eq(messages.senderId, users.id))
-      .leftJoin(
-        sql`${messages} as reply_msg`,
-        eq(messages.replyToId, sql`reply_msg.id`)
-      )
-      .leftJoin(
-        sql`${users} as reply_sender`,
-        eq(sql`reply_msg.sender_id`, sql`reply_sender.id`)
-      )
       .where(and(...whereConditions))
       .orderBy(desc(messages.createdAt))
       .limit(limit + 1);
@@ -158,26 +145,57 @@ export class ChatQueries {
     const hasMore = messageData.length > limit;
     const messagesResult = hasMore ? messageData.slice(0, -1) : messageData;
 
+    // Get reply-to messages separately
+    const replyToIds = messagesResult
+      .map((m) => m.message.replyToId)
+      .filter((id): id is number => id !== null);
+
+    const replyToMessages =
+      replyToIds.length > 0
+        ? await db
+            .select({
+              message: messages,
+              sender: users,
+            })
+            .from(messages)
+            .innerJoin(users, eq(messages.senderId, users.id))
+            .where(inArray(messages.id, replyToIds))
+        : [];
+
+    const replyToMap = replyToMessages.reduce(
+      (acc, { message, sender }) => {
+        acc[message.id] = { ...message, sender };
+        return acc;
+      },
+      {} as Record<number, any>
+    );
+
     // Get reactions for these messages
     const messageIds = messagesResult.map((m) => m.message.id);
-    const reactions = await db
-      .select({
-        reaction: messageReactions,
-        user: users,
-      })
-      .from(messageReactions)
-      .innerJoin(users, eq(messageReactions.userId, users.id))
-      .where(inArray(messageReactions.messageId, messageIds));
+    const reactions =
+      messageIds.length > 0
+        ? await db
+            .select({
+              reaction: messageReactions,
+              user: users,
+            })
+            .from(messageReactions)
+            .innerJoin(users, eq(messageReactions.userId, users.id))
+            .where(inArray(messageReactions.messageId, messageIds))
+        : [];
 
     // Get mentions for these messages
-    const mentions = await db
-      .select({
-        mention: messageMentions,
-        mentionedUser: users,
-      })
-      .from(messageMentions)
-      .innerJoin(users, eq(messageMentions.mentionedUserId, users.id))
-      .where(inArray(messageMentions.messageId, messageIds));
+    const mentions =
+      messageIds.length > 0
+        ? await db
+            .select({
+              mention: messageMentions,
+              mentionedUser: users,
+            })
+            .from(messageMentions)
+            .innerJoin(users, eq(messageMentions.mentionedUserId, users.id))
+            .where(inArray(messageMentions.messageId, messageIds))
+        : [];
 
     // Group reactions and mentions by message
     const reactionsByMessage = reactions.reduce(
@@ -199,13 +217,10 @@ export class ChatQueries {
     );
 
     const result: MessageWithSender[] = messagesResult.map(
-      ({ message, sender, replyToMessage, replyToSender }) => ({
+      ({ message, sender }) => ({
         ...message,
         sender,
-        replyTo:
-          replyToMessage && replyToSender
-            ? { ...replyToMessage, sender: replyToSender }
-            : undefined,
+        replyTo: message.replyToId ? replyToMap[message.replyToId] : undefined,
         reactions: reactionsByMessage[message.id] || [],
         mentions: mentionsByMessage[message.id] || [],
       })
@@ -246,7 +261,7 @@ export class ChatQueries {
           createdBy: creatorId,
           participantCount: participantIds.length + 1, // +1 for creator
         })
-        .returning();
+        .$returningId();
 
       // Add creator as owner
       await tx.insert(participants).values({
@@ -318,13 +333,13 @@ export class ChatQueries {
           attachments,
           metadata,
         })
-        .returning();
+        .$returningId();
 
       // Update conversation last message timestamp and message count
       await tx
         .update(conversations)
         .set({
-          lastMessageAt: message.createdAt,
+          lastMessageAt: new Date(),
           messageCount: sql`${conversations.messageCount} + 1`,
         })
         .where(eq(conversations.id, conversationId));
@@ -380,7 +395,7 @@ export class ChatQueries {
     return db
       .insert(messageReactions)
       .values({ messageId, userId, emoji })
-      .onDuplicateKeyUpdate({ set: { createdAt: sql`NOW()` } });
+      .onDuplicateKeyUpdate({ set: { createdAt: new Date() } });
   }
 
   // Remove reaction from message
@@ -417,15 +432,16 @@ export class ChatQueries {
       throw new Error("Message not found or user unauthorized");
     }
 
-    return db
+    await db
       .update(messages)
       .set({
         content,
         metadata,
         isEdited: true,
       })
-      .where(eq(messages.id, messageId))
-      .returning();
+      .where(eq(messages.id, messageId));
+
+    return { success: true };
   }
 
   // Delete message (soft delete)
@@ -465,15 +481,16 @@ export class ChatQueries {
       throw new Error("User unauthorized to delete this message");
     }
 
-    return db
+    await db
       .update(messages)
       .set({
         isDeleted: true,
-        deletedAt: sql`NOW()`,
+        deletedAt: new Date(),
         content: null, // Clear content for privacy
       })
-      .where(eq(messages.id, messageId))
-      .returning();
+      .where(eq(messages.id, messageId));
+
+    return { success: true };
   }
 
   // Update user presence
@@ -502,14 +519,14 @@ export class ChatQueries {
           status: status || sql`${userPresence.status}`,
           customStatus: customStatus || sql`${userPresence.customStatus}`,
           isVisible: isVisible ?? sql`${userPresence.isVisible}`,
-          lastSeenAt: sql`NOW()`,
+          lastSeenAt: new Date(),
         },
       });
   }
 
   // Get unread message count for user
   static async getUnreadMessageCount(userId: number, conversationId?: number) {
-    const baseQuery = db
+    let baseQuery = db
       .select({
         conversationId: messages.conversationId,
         unreadCount: sql<number>`COUNT(*)`,
@@ -523,14 +540,13 @@ export class ChatQueries {
         and(
           eq(participants.userId, userId),
           eq(participants.isActive, true),
-          gt(messages.id, sql`COALESCE(${participants.lastReadMessageId}, 0)`),
-          eq(messages.isDeleted, false)
+          gt(messages.id, sql`COALESCE(${participants.lastReadMessageId}, 0)`)
         )
       )
       .groupBy(messages.conversationId);
 
     if (conversationId) {
-      baseQuery.where(eq(messages.conversationId, conversationId));
+      baseQuery = baseQuery.where(eq(messages.conversationId, conversationId));
     }
 
     return baseQuery;
@@ -542,11 +558,11 @@ export class ChatQueries {
     conversationId: number,
     lastReadMessageId: number
   ) {
-    return db
+    await db
       .update(participants)
       .set({
         lastReadMessageId,
-        lastSeenAt: sql`NOW()`,
+        lastSeenAt: new Date(),
       })
       .where(
         and(
@@ -554,6 +570,8 @@ export class ChatQueries {
           eq(participants.conversationId, conversationId)
         )
       );
+
+    return { success: true };
   }
 
   // Search messages
@@ -573,7 +591,6 @@ export class ChatQueries {
     const whereConditions = [
       eq(participants.userId, userId),
       eq(participants.isActive, true),
-      eq(messages.isDeleted, false),
       sql`MATCH(${messages.content}) AGAINST(${query} IN BOOLEAN MODE)`,
     ];
 

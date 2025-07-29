@@ -2,11 +2,13 @@ import {
   mysqlTable,
   int,
   timestamp,
+  datetime,
   boolean,
   mysqlEnum,
   primaryKey,
   index,
 } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 import { conversations } from "./conversations";
 
@@ -28,14 +30,16 @@ export const participants = mysqlTable(
     // Participant status
     isActive: boolean("is_active").notNull().default(true),
     isMuted: boolean("is_muted").notNull().default(false),
-    mutedUntil: timestamp("muted_until"),
+    mutedUntil: datetime("muted_until"),
 
     // Join/leave tracking
-    joinedAt: timestamp("joined_at").defaultNow().notNull(),
-    leftAt: timestamp("left_at"),
+    joinedAt: datetime("joined_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    leftAt: datetime("left_at"),
 
     // Last activity tracking
-    lastSeenAt: timestamp("last_seen_at"),
+    lastSeenAt: datetime("last_seen_at"),
     lastReadMessageId: int("last_read_message_id"), // For read receipts
 
     // Notification preferences
@@ -44,7 +48,9 @@ export const participants = mysqlTable(
       .default(true),
 
     // Timestamps
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: datetime("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   },
   (table) => ({

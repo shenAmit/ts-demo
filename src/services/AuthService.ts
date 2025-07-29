@@ -61,14 +61,14 @@ export class AuthService {
     };
 
     const secret = process.env.JWT_SECRET;
-    const expiresIn = (process.env.JWT_EXPIRES_IN ?? "1d").trim(); 
+    const expiresIn = (process.env.JWT_EXPIRES_IN ?? "1d").trim();
 
     if (!secret) {
       throw new AppError("JWT secret not configured", 500);
     }
 
     return jwt.sign(payload, secret, {
-      expiresIn: expiresIn as jwt.SignOptions["expiresIn"], 
+      expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
     });
   }
 }

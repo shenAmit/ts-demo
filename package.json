@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon --exec tsx ./server.ts",
+    "dev": "nodemon",
     "dev:alt": "nodemon --exec \"node --loader ts-node/esm\" ./server.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",

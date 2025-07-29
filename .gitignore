@@ -3,3 +3,4 @@ drizzle
 .env
 package-lock.json
 node_modules
+logs

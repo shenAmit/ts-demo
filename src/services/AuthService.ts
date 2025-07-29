@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { AppError } from "../utils/errors/AppError";
 import { UserRepository } from "@/repositories/UserRepository";
 import { User } from "@/models/User";
+import { AuthResponse } from "@/types/common";
 
 interface RegisterDTO {
   name: string;
@@ -17,7 +18,7 @@ export class AuthService {
     this.userRepository = new UserRepository();
   }
 
-  async login(email: string, password: string): Promise<string> {
+  async login(email: string, password: string): Promise<AuthResponse> {
     const user = await this.userRepository.findByEmail(email);
 
     if (!user) {
@@ -31,10 +32,10 @@ export class AuthService {
     }
 
     const token = this.generateToken(user);
-    return token;
+    return { token, user };
   }
 
-  async register({ name, email, password }: RegisterDTO): Promise<User> {
+  async register({ name, email, password }: RegisterDTO): Promise<void> {
     const existingUser = await this.userRepository.findByEmail(email);
 
     if (existingUser) {
@@ -43,13 +44,11 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await this.userRepository.create({
+    await this.userRepository.create({
       name,
       email,
       password: hashedPassword,
     });
-
-    return newUser;
   }
 
   private generateToken(user: User): string {

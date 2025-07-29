@@ -6,13 +6,7 @@ import { users } from "@/database/schema/users";
 export class UserRepository {
   async findByEmail(email: string): Promise<User | null> {
     const result = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        createdAt: users.createdAt,
-        // don't include users.password here
-      })
+      .select()
       .from(users)
       .where(eq(users.email, email))
       .limit(1);

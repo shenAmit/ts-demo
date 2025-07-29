@@ -26,13 +26,15 @@ export class AuthService {
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
-
     if (!passwordMatch) {
       throw new AppError("Invalid email or password", 401);
     }
 
+    const { password: _, ...safeUser } = user;
+
     const token = this.generateToken(user);
-    return { token, user };
+
+    return { token, user: safeUser as User };
   }
 
   async register({ name, email, password }: RegisterDTO): Promise<void> {
@@ -59,12 +61,14 @@ export class AuthService {
     };
 
     const secret = process.env.JWT_SECRET;
-    const expiresIn = process.env.JWT_EXPIRES_IN || "1d";
+    const expiresIn = (process.env.JWT_EXPIRES_IN ?? "1d").trim(); 
 
     if (!secret) {
       throw new AppError("JWT secret not configured", 500);
     }
 
-    return jwt.sign(payload, secret, { expiresIn: "1d" });
+    return jwt.sign(payload, secret, {
+      expiresIn: expiresIn as jwt.SignOptions["expiresIn"], 
+    });
   }
 }

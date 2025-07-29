@@ -14,7 +14,7 @@ async function startServer() {
   try {
     await connectDB();
     server.listen(PORT, () => {
-      logger.info(`🚀 Server is running on port ${PORT}`);
+      logger.info(`🚀 Api ready on port ${PORT}`);
     });
   } catch (error) {
     logger.error("Failed to start server:", error);

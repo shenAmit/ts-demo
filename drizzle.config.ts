@@ -4,8 +4,8 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 export default {
-  schema: "./src/database/schema",
-  out: "./drizzle",
+  schema: "./src/database/schema/index.ts",
+  out: "./src/database/migrations",
   driver: "mysql2",
   dbCredentials: {
     uri: process.env.DATABASE_URL!,

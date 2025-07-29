@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-     "dev": "nodemon --exec tsx ./server.ts",
+    "dev": "nodemon --exec tsx ./server.ts",
     "dev:alt": "nodemon --exec \"node --loader ts-node/esm\" ./server.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
@@ -16,7 +16,9 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "format": "prettier --write src/**/*.ts"
+    "format": "prettier --write src/**/*.ts",
+    "drizzle:generate": "drizzle-kit generate:mysql",
+    "drizzle:push": "drizzle-kit push:mysql"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -46,7 +48,7 @@
     "@types/pg": "^8.10.9",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "drizzle-kit": "^0.20.4",
+    "drizzle-kit": "^0.20.18",
     "eslint": "^8.54.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",

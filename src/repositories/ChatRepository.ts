@@ -1,21 +1,22 @@
 import { eq, desc, and, sql, inArray, gt, lt } from "drizzle-orm";
-import {
-  conversations,
-  messages,
-  participants,
-  messageReactions,
-  messageMentions,
-  users,
-  userPresence,
-} from "../schema";
+
 import type {
   ConversationWithParticipants,
   MessageWithSender,
   MessagesResponse,
   ConversationsResponse,
   PaginationParams,
-} from "../../types/chat";
+} from "@/types/chat";
 import { db } from "@/database/connection";
+import {
+  conversations,
+  messageMentions,
+  messageReactions,
+  messages,
+  participants,
+  userPresence,
+  users,
+} from "@/database/schema";
 export class ChatRepository {
   // Get user's conversations with participants and last message
   static async getUserConversations(

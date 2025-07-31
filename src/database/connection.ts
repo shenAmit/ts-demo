@@ -15,7 +15,7 @@ export async function connectDB() {
   }
 
   const match = url.match(
-    /^mysql:\/\/(?<user>[^:]+):(?<password>[^@]*)@(?<host>[^:]+):(?<port>\d+)\/(?<database>[^?]+)/,
+    /^mysql:\/\/(?<user>[^:]+):(?<password>[^@]*)@(?<host>[^:]+):(?<port>\d+)\/(?<database>[^?]+)/
   );
 
   if (!match || !match.groups) {
@@ -24,21 +24,30 @@ export async function connectDB() {
 
   const { user, password, host, port, database } = match.groups;
 
-  pool = createPool({
-    host,
-    port: Number(port),
-    user,
-    password: password || "",
-    database,
-    waitForConnections: true,
-    connectionLimit: 10,
-  });
+  try {
+    pool = createPool({
+      host,
+      port: Number(port),
+      user,
+      password: password || "",
+      database,
+      waitForConnections: true,
+      connectionLimit: 10,
+    });
 
-  db = drizzle(pool);
-  console.log("✅ MySQL connected via Drizzle");
+    db = drizzle(pool);
+
+    await pool.execute("SELECT 1");
+    console.log("✅ MySQL connected via Drizzle");
+  } catch (error) {
+    console.error("❌ Failed to connect to MySQL:", error);
+    throw error;
+  }
 }
 
 export async function disconnectDB() {
-  await pool.end();
-  console.log("❌ MySQL disconnected");
+  if (pool) {
+    await pool.end();
+    console.log("❌ MySQL disconnected");
+  }
 }
